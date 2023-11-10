@@ -1,0 +1,204 @@
+'''
+*****************************************************************************************
+*
+*        		===============================================
+*           		GeoGuide(GG) Theme (eYRC 2023-24)
+*        		===============================================
+*
+*  This script is to implement Task 1A of GeoGuide(GG) Theme (eYRC 2023-24).
+*  
+*  This software is made available on an "AS IS WHERE IS BASIS".
+*  Licensee/end user indemnifies and will keep e-Yantra indemnified from
+*  any and all claim(s) that emanate from the use of the Software or 
+*  breach of the terms of this agreement.
+*
+*****************************************************************************************
+'''
+
+# Team ID:			[  ]
+# Author List:		[ ]
+# Filename:			task_1a.py
+# Functions:	    [`ideantify_features_and_targets`, `load_as_tensors`,
+# 					 `model_loss_function`, `model_optimizer`, `model_number_of_epochs`, `training_function`,
+# 					 `validation_functions` ]
+
+####################### IMPORT MODULES #######################
+import pandas
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+# Data preprocessing function
+def data_preprocessing(task_1a_dataframe):
+    cat_features = task_1a_dataframe.select_dtypes(include=["object"]).columns
+    encoder_dataframe = task_1a_dataframe.drop_duplicates()
+    le = LabelEncoder()
+    encoder_dataframe['JoiningYear'] = le.fit_transform(encoder_dataframe['JoiningYear'])
+    encoder_dataframe['Age'] = le.fit_transform(encoder_dataframe['Age'])
+    for column in cat_features:
+        encoder_dataframe.loc[:, column] = le.fit_transform(encoder_dataframe[column])
+
+    # Normalize numerical features
+    numerical_features = encoder_dataframe.select_dtypes(include=["float64"]).columns
+    if not numerical_features.empty:
+        scaler = StandardScaler()
+        encoder_dataframe[numerical_features] = scaler.fit_transform(encoder_dataframe[numerical_features])
+
+    return encoder_dataframe
+
+
+# Identify features and targets function
+
+def identify_features_and_targets(encoded_dataframe):
+    features = encoded_dataframe.columns[:-1]
+    features= encoded_dataframe[features]
+    targets = encoded_dataframe[encoded_dataframe.columns[-1]]
+    features_and_targets=[features, targets]
+    return features_and_targets
+
+# Load data as tensors
+# Load data as tensors
+def load_as_tensors(features_and_targets):
+    features, target = features_and_targets
+
+    # Ensure features contain only numeric data
+    features = np.array(features, dtype=np.float32)
+    target = np.array(target, dtype=np.float32)
+
+    # Split the data into training and validation sets
+    X_train, X_val, y_train, y_val = train_test_split(features, target, test_size=0.2, random_state=42)
+
+    # Convert NumPy arrays to PyTorch tensors
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32)
+    X_val_tensor = torch.tensor(X_val, dtype=torch.float32)
+    y_val_tensor = torch.tensor(y_val, dtype=torch.float32)
+
+    # Create DataLoader for both training and validation
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+
+    val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
+    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    tensors_and_iterable_training_data = [X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, train_dataloader]
+    return tensors_and_iterable_training_data
+
+
+
+
+class Salary_Predictor(nn.Module):
+    def __init__(self):
+        super(Salary_Predictor, self).__init__()
+        self.fc1 = nn.Linear(8, 128)
+        self.relu1 = nn.ReLU()
+        self.dropout1 = nn.Dropout(0.2)  # Adding dropout after the first layer
+        self.fc2 = nn.Linear(128, 128)
+        self.relu2 = nn.ReLU()
+        self.dropout2 = nn.Dropout(0.2)  # Adding dropout after the second layer
+        self.fc3 = nn.Linear(128, 32)
+        self.relu3 = nn.ReLU()
+        self.fc4 = nn.Linear(32,1)
+        self.sigmoid = nn.Sigmoid()  # Sigmoid activation for binary classification
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu1(x)
+        x = self.dropout1(x)
+        x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.dropout2(x)
+        x = self.fc3(x)
+        x = self.relu3(x)
+        x = self.fc4(x)
+        predicted_output=self.sigmoid(x)
+        return predicted_output
+
+
+# Loss function (BCELoss for binary classification)
+def model_loss_function():
+    return nn.BCELoss()
+
+# Model optimizer (Adam optimizer)
+def model_optimizer(model):
+    return optim.Adam(model.parameters(),lr=0.001)
+
+# Number of training epochs
+def model_number_of_epochs():
+    return 400
+
+# Training function
+def training_function(model, number_of_epochs, tensors_and_iterable_training_data, loss_function, optimizer):
+    train_dataloader=tensors_and_iterable_training_data[4]
+    for epoch in range(number_of_epochs):
+        total_loss = 0.0
+        trained_model= model.train()
+         # Set model to training mode
+        for inputs, labels in train_dataloader:
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = loss_function(outputs.squeeze(), labels)  # Apply sigmoid and squeeze for BCELoss
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+    return trained_model
+
+# Validation function
+def validation_function(trained_model, tensors_and_iterable_training_data):
+    X_val_tensor = tensors_and_iterable_training_data[2]
+    y_val_tensor = tensors_and_iterable_training_data[3]
+    model.eval()  # Set model to evaluation mode
+    y_true = []
+    y_pred = []
+    with torch.no_grad():
+        for inputs, labels in zip(X_val_tensor, y_val_tensor):
+            outputs = model(inputs)
+            # Round the predicted values to 0 or 1 based on a threshold of 0.5
+            predicted = (outputs >= 0.5).float()  # Threshold at 0.5
+            # Convert tensor outputs and labels to numpy arrays
+            labels = labels.cpu().numpy()
+            y_true.append(labels)  # Append label (single value) to y_true
+            y_pred.append(predicted.item())  # Append predicted value (single value) to y_pred
+    model_accuracy = accuracy_score(y_true, y_pred)
+    return model_accuracy
+
+if __name__ == "__main__":
+
+	# reading the provided dataset csv file using pandas library and 
+	# converting it to a pandas Dataframe
+	task_1a_dataframe = pandas.read_csv(r'C:\Users\miniconda3\envs\Task_1A\task_1a_dataset.csv')
+
+	# data preprocessing and obtaining encoded data
+	encoded_dataframe = data_preprocessing(task_1a_dataframe)
+
+	# selecting required features and targets
+	features_and_targets = identify_features_and_targets(encoded_dataframe)
+
+	# obtaining training and validation data tensors and the iterable
+	# training data object
+	tensors_and_iterable_training_data = load_as_tensors(features_and_targets)
+	
+	# model is an instance of the class that defines the architecture of the model
+	model = Salary_Predictor()
+
+	# obtaining loss function, optimizer and the number of training epochs
+	loss_function = model_loss_function()
+	optimizer = model_optimizer(model)
+	number_of_epochs = model_number_of_epochs()
+
+	# training the model
+	trained_model = training_function(model, number_of_epochs, tensors_and_iterable_training_data, 
+					loss_function, optimizer)
+
+	# validating and obtaining accuracy
+	model_accuracy = validation_function(trained_model,tensors_and_iterable_training_data)
+	print(f"Accuracy on the test set = {model_accuracy}")
+
+	X_train_tensor = tensors_and_iterable_training_data[0]
+	x = X_train_tensor[0]
+	jitted_model = torch.jit.save(torch.jit.trace(model, (x)), "task_1a_trained_model.pth")

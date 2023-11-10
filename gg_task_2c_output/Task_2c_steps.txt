@@ -1,0 +1,163 @@
+Team ID = GG_1684
+Trained weights drive link = https://drive.google.com/file/d/1Pk-r8Ak4uAGzCY1vnFd8k7lG7hqDtoLg/view?usp=drive_link
+
+###############################################################################
+This code imports necessary libraries and defines variables. It processes an arena image by reading and resizing it.
+It then identifies specific regions within the image and appends them to a list called `event_list`. 
+The regions are determined by specific pixel coordinates and represent different types of events.
+The code uses a predefined image classification model to classify each region, determining the type of event it represents.
+The detected events are mapped to predefined event classes (e.g., "combat," "fire") and stored in a list called `detected_list`.
+This process is performed for a total of 5 events in the arena image.
+
+################################ CODE #########################################
+# Importing Libraries
+from sys import platform
+import numpy as np
+import subprocess
+import cv2     # OpenCV Library
+import shutil
+import ast
+import sys
+import os
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten
+
+# Defining Variables
+arena_path = r"C:\Users\hilbr\miniconda3\envs\GG_1684\Task_2C\arena.png"  # Path of generated arena image
+event_list = []
+detected_list = []
+
+combat = "combat"
+rehab = "humanitarianaid"
+military_vehicles = "militaryvehicles"
+fire = "fire"
+destroyed_building = "destroyedbuilding"
+
+# Arena Image Processing
+def arena_image(arena_path):
+    frame = cv2.imread(arena_path)
+    arena = cv2.resize(frame, (700, 700))
+    return arena
+
+# Event Identification
+def event_identification(arena):
+    def detected_event(x_start, x_end, y_start, y_end):
+        imge = arena[x_start:x_end, y_start:y_end]
+        event_list.append(imge)
+
+    for i in range(0, 5):
+        if i == 0:
+            x_start = 598
+            x_end = 654
+            y_start = 155
+            y_end = 210
+            detected_event(x_start, x_end, y_start, y_end)
+        # Similar blocks for other events
+
+    return event_list
+
+###################################################################################
+Explanation:
+- The "Importing Libraries" section includes import statements for required libraries such as `platform`, `numpy`, `subprocess`, `cv2` (OpenCV), `shutil`, `ast`, `sys`, and `tensorflow`. These libraries are necessary for various tasks, including image processing and machine learning.
+- The "Defining Variables" section sets up key variables, including the path to the arena image (`arena_path`) and event-related strings (`combat`, `rehab`, `military_vehicles`, `fire`, and `destroyed_building`).
+- The "Arena Image Processing" section defines the `arena_image(arena_path)` function, which reads and resizes the arena image.
+- The "Event Identification" section defines the `event_identification(arena)` function, which extracts specific regions from the arena image and appends them to `event_list`.
+
+Now, let's continue with the code for the remaining sections:
+
+
+################################ CODE #########################################
+# Event Classification
+def classify_event(image):
+    model_path = r'C:\Users\hilbr\miniconda3\envs\GG_1684\Task_2C\image_classification_model.h5'
+    model = keras.models.load_model(model_path)
+    kernel = np.array([[-1, -1, -1],
+                       [-1, 9, -1],
+                       [-1, -1, -1]])
+    sharpened_image = cv2.filter2D(image, -1, kernel)
+    img_array = cv2.resize(sharpened_image, (50, 50))
+    img_array = img_array / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+
+    predictions = model.predict(img_array)
+
+    event_classes = ["combat", "destroyedbuilding", "fire", "humanitarianaid", "militaryvehicles"]
+    predicted_class_index = np.argmax(predictions)
+    predicted_event = event_classes[predicted_class_index]
+    event = predicted_event
+    return event
+
+###################################################################################
+Explanation:
+- The "Event Classification" section defines the `classify_event(image)` function. This function loads a pre-trained image classification model from a specified path and uses it to classify events based on provided images.
+- The function applies a sharpening kernel to the input image, resizes it, normalizes the image data, and makes predictions using the loaded model. The predicted event is returned.
+
+################################ CODE #########################################
+
+# Classification
+def classification(event_list):
+    for img_index in range(0, 5):
+        img = event_list[img_index]
+        detected_event = classify_event(img)
+        print((img_index + 1), detected_event)
+        if detected_event == combat:
+            detected_list.append("combat")
+        if detected_event == rehab:
+            detected_list.append("rehab")
+        if detected_event == military_vehicles:
+            detected_list.append("militaryvehicles")
+        if detected_event == fire:
+            detected_list.append("fire")
+        if detected_event == destroyed_building:
+            detected_list.append("destroyedbuilding")
+    return detected_list
+
+
+##########################################################################################
+
+Explanation:
+- The "Classification" section defines the `classification(event_list)` function. This function iterates through the images in `event_list`, classifies each image using the `classify_event` function, and appends the detected events to the `detected_list`. Detected events are printed to the console.
+
+
+Coding:
+
+################################ CODE #########################################
+# Main Function
+def main():
+    # Input
+    input_function()
+
+    # Process
+    arena = arena_image(arena_path)
+    event_list = event_identification(arena)
+    detected_list = classification(event_list)
+
+    # Output
+    detected_list_processing(detected_list)
+    output_function()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Interrupted')
+        if os.path.exists('arena.png'):
+            os.remove('arena.png')
+        if os.path.exists('detected_events.txt'):
+            os.remove('detected_events.txt')
+        sys.exit()
+
+
+#####################################################################################
+
+Explanation:
+- The "Main Function" section defines the `main()` function, which is the entry point of the script.
+- It calls the `input_function()` to handle input operations.
+- It processes the arena image, identifies events, classifies them, and processes the detected events.
+- It finally calls the `output_function()` to handle output operations.
+
+The script execution starts with the `if __name__ == '__main__':` block, and the `main()` function is executed. The script handles exceptions and, in the case of a keyboard interrupt, removes temporary files.
+
+This code breakdown provides a step-by-step explanation of your script along with the corresponding Python code.
