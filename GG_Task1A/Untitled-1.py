@@ -1,0 +1,213 @@
+'''
+*****************************************************************************************
+*
+*               ===============================================
+*                   GeoGuide(GG) Theme (eYRC 2023-24)
+*               ===============================================
+*
+*  This script is to implement Task 1A of GeoGuide(GG) Theme (eYRC 2023-24).
+*
+*  This software is made available on an "AS IS WHERE IS BASIS".
+*  Licensee/end user indemnifies and will keep e-Yantra indemnified from
+*  any and all claim(s) that emanate from the use of the Software or
+*  breach of the terms of this agreement.
+*
+*****************************************************************************************
+
+'''
+
+# Team ID:          [ Team-ID ]
+# Author List:      [ Names of team members worked on this file separated by Comma: Name1, Name2, ... ]
+# Filename:         task_1a.py
+# Functions:        [`ideantify_features_and_targets`, `load_as_tensors`,
+#                    `model_loss_function`, `model_optimizer`, `model_number_of_epochs`, `training_function`,
+#                    `validation_functions` ]
+
+####################### IMPORT MODULES #######################
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+import torch
+from torch.utils.data import TensorDataset, DataLoader
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim import lr_scheduler
+import numpy as np
+from sklearn.model_selection import GridSearchCV
+###################### Additional Imports ####################
+'''
+You can import any additional modules that you require from
+torch, matplotlib or sklearn.
+You are NOT allowed to import any other libraries. It will
+cause errors while running the executable
+'''
+##############################################################
+
+################# ADD UTILITY FUNCTIONS HERE #################
+
+
+
+
+
+##############################################################
+
+
+
+# Define the preprocessing function
+def data_preprocessing(task_1a_dataframe):
+    ds = pd.read_csv(task_1a_dataframe)
+    cat_features = ds.select_dtypes(include=["object"]).columns
+    encoder = ds.drop_duplicates()
+    le = LabelEncoder()
+    for column in cat_features:
+        encoder.loc[:, column] = le.fit_transform(encoder[column])
+        encoded_dataframe = encoder
+    return encoded_dataframe
+
+# Define the feature selection function
+def identify_features_and_targets(features_and_targets):
+    target = features_and_targets['LeaveOrNot']
+    features =features_and_targets.drop(columns=['LeaveOrNot'])
+    features_and_targets = [features, target]
+    return features_and_targets
+
+# Define the function to load data as tensors
+def load_as_tensors(features_and_targets, batch_size=64, validation_split=0.2, shuffle=True):
+    features, targets = features_and_targets
+
+    X = torch.tensor(features.values.astype('float32'), dtype=torch.float32)
+    y = torch.tensor(targets.values.astype('float32'), dtype=torch.float32)
+ # Use int64 for labels
+
+    num_validation = int(validation_split * len(features))
+
+    X_train_tensor = X[:-num_validation]
+    y_train_tensor = y[:-num_validation]
+    X_val_tensor = X[-num_validation:]
+    y_val_tensor = y[-num_validation:]
+
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    tensors_and_iterable_training_data = [X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, train_loader, val_loader]
+    return tensors_and_iterable_training_data
+
+# Define your neural network model with regularization
+class  Salary_Predictor(nn.Module):
+    def __init__(self):
+        super(Salary_Predictor, self).__init__()
+        self.fc1 = nn.Linear(8, 64)
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(64, 8)
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(8, 64)
+        self.relu3 = nn.ReLU()
+        self.fc4 = nn.Linear(64, 2)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu1(x)
+        x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.fc3(x)
+        x = self.relu3(x)
+        x = self.fc4(x)
+
+        return x
+
+# Define the loss function
+def model_loss_function(outputs, labels):
+    loss_function = nn.CrossEntropyLoss()
+    return loss_function(outputs, labels.long())
+
+# Define the optimizer with L2 regularization
+def model_optimizer(model, learning_rate=0.05, weight_decay=0.001):
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    return optimizer
+
+# Define the number of epochs
+def model_number_of_epochs():
+    number_of_epochs = 5
+    return number_of_epochs
+
+# Training loop with learning rate scheduler
+def training_function(model, number_of_epochs, tensors_and_iterable_training_data, loss_function, optimizer):
+    train_loader = tensors_and_iterable_training_data[4]  # Obtain the train_loader
+
+    for epoch in range(number_of_epochs):
+        model.train()  # Set the model to training mode
+        total_loss = 0.0
+
+        for inputs, labels in train_loader:
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = loss_function(outputs, labels.long())
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+
+        average_loss = total_loss / len(train_loader)
+        print(f'Epoch [{epoch + 1}/{number_of_epochs}], Average Loss: {average_loss:.4f}')
+    return model
+
+# Define a validation function
+def validation_function(trained_model, tensors_and_iterable_training_data):
+    val_loader = tensors_and_iterable_training_data[5]
+    trained_model.eval()
+    total_accuracy = 0.0
+    total_samples = 0
+
+    for inputs, labels in val_loader:
+        outputs = trained_model(inputs)
+        _, predicted = torch.max(outputs, 1)
+        correct = (predicted == labels).sum().item()
+        total_samples += labels.size(0)
+        total_accuracy += correct
+
+    model_accuracy = total_accuracy / total_samples
+    print(y_val_tensor.shape)
+    print('predicted', predicted.shape)
+    print('total_accuracy', total_accuracy)
+    print('total_samples', total_samples)
+    print(f'Validation Accuracy: {model_accuracy:.4f}')
+    return model_accuracy
+
+
+if __name__ == "__main__":
+    # Reading the provided dataset csv file using pandas library and
+    # converting it to a pandas DataFrame
+    task_1a_dataframe = (r'/content/task_1a_dataset 1.csv')
+
+    # Data preprocessing and obtaining encoded data
+    encoded_dataframe = data_preprocessing(task_1a_dataframe)
+
+    # Selecting required features and targets
+    features_and_targets = identify_features_and_targets(encoded_dataframe)
+
+    # Obtaining training and validation data tensors and the iterable
+    # training data object
+    tensors_and_iterable_training_data = load_as_tensors(features_and_targets)
+
+    # Unpacking tensors and loaders
+
+
+    # Model is an instance of the class that defines the architecture of the model
+    model = Salary_Predictor()
+
+    # Obtaining loss function, optimizer, and the number of training epochs
+    loss_function = model_loss_function # Corrected this line
+    optimizer = model_optimizer(model)
+    number_of_epochs = model_number_of_epochs()
+
+    # Training the model
+    trained_model = training_function(model, number_of_epochs, tensors_and_iterable_training_data,loss_function, optimizer)  # Corrected this line
+
+    # Validating and obtaining accuracy
+    model_accuracy = validation_function(trained_model, tensors_and_iterable_training_data,loss_function)
+    print(f"Accuracy on the test set = {model_accuracy}")
+
+    # Saving the model
+    x = x_train_tensor[0]
+    jitted_model = torch.jit.save(torch.jit.trace(model, (x)), "task_1a_trained_model.pth")
