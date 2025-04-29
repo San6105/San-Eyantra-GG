@@ -15,8 +15,8 @@
 *****************************************************************************************
 '''
 
-# Team ID:			[ ]
-# Author List:		[]
+# Team ID:			[ Team-ID ]
+# Author List:		[ Names of team members worked on this file separated by Comma: Name1, Name2, ... ]
 # Filename:			task_2a.py
 # Functions:		detect_ArUco_details
 # 					[ Comma separated list of functions in this file ]
@@ -35,34 +35,76 @@ import math
 
 ################# ADD UTILITY FUNCTIONS HERE #################
 
+
+
+
+
+##############################################################
+
 def detect_ArUco_details(image):
-    aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
-    parameters = aruco.DetectorParameters()
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    corners, ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+
+    """
+    Purpose:
+    ---
+    This function takes the image as an argument and returns two dictionaries where one
+    contains details regarding the center coordinates and orientation of the marker
+    and the second dictionary contains values of the 4 corner coordinates of the marker. 
+    
+    First output: The dictionary `ArUco_details_dict` should should have the id of the marker 
+    as the key and the value corresponding to that id should be a list containing the following details
+    in this order: [[center_x, center_y], angle from the vertical]     
+    This order should be strictly maintained in the output
+    Datatypes:
+    1. id - int
+    2. center coordinates - int
+    3. angle - int, x and y coordinates should be combined as a list for each corner
+
+    Second output: The dictionary `ArUco_corners` should contain the id of the marker as key and the
+    corresponding value should be an array of the coordinates of 4 corner points of the markers
+    Datatypes:
+    1. id - int
+    2. corner coordinates - each coordinate value should be float, x and y coordinates should 
+    be combined as a list for each corner
+
+    Input Arguments:
+    ---
+    `image` :	[ numpy array ]
+            numpy array of image returned by cv2 library
+    Returns:
+    ---
+    `ArUco_details_dict` : { dictionary }
+            dictionary containing the details regarding the ArUco marker
+
+    `ArUco_corners` : { dictionary }
+            dictionary containing the details regarding the corner coordinates of the ArUco marker
+    
+    Example call:
+    ---
+    ArUco_details_dict, ArUco_corners = detect_ArUco_details(image)
+
+    Example output for 2 markers in an image:
+    ---
+    * ArUco_details_dict = {9: [[311, 490], 0], 3: [[158, 175], -22]}
+    * ArUco_corners = 
+       {9: array([[211., 389.],
+       [412., 389.],
+       [412., 592.],
+       [211., 592.]], dtype=float32), 
+       3: array([[109.,  46.],
+       [284., 118.],
+       [207., 304.],
+       [ 33., 232.]], dtype=float32)}
+    """    
     ArUco_details_dict = {}
     ArUco_corners = {}
+    
+    ##############	ADD YOUR CODE HERE	##############
 
-    if ids is not None:
-        for i in range(len(ids)):
-            marker_id = int(ids[i][0])
-            marker_corners = corners[i][0]
-            center_x = int((marker_corners[0][0] + marker_corners[2][0]) / 2)
-            center_y = int((marker_corners[0][1] + marker_corners[2][1]) / 2)
-            b = marker_corners[1]
-            c = marker_corners[2]
-            ang = math.degrees(math.atan2(c[1] - b[1], c[0] - b[0])) - 90 
-            if ang < -180:
-              ang -= 360
-            elif ang > 180:
-               ang += 360
+    ##################################################
+    
+    return ArUco_details_dict, ArUco_corners 
 
-
-
-            ArUco_details_dict[marker_id] = [[center_x, center_y], int(ang)]
-            ArUco_corners[marker_id] = marker_corners
-
-    return ArUco_details_dict, ArUco_corners
+######### YOU ARE NOT ALLOWED TO MAKE CHANGES TO THE CODE BELOW #########	
 
 def mark_ArUco_image(image,ArUco_details_dict, ArUco_corners):
 
@@ -89,15 +131,14 @@ def mark_ArUco_image(image,ArUco_details_dict, ArUco_corners):
 if __name__ == "__main__":
 
     # path directory of images in test_images folder
-    img_dir_path =(r"C:/Users/miniconda3/envs/Task_2A_files/public_test_cases/")
+    img_dir_path = "public_test_cases/"
+
     marker = 'aruco'
 
     for file_num in range(0,2):
         img_file_path = img_dir_path +  marker + '_' + str(file_num) + '.png'
 
         # read image using opencv
-
-
         img = cv2.imread(img_file_path)
 
         print('\n============================================')
@@ -109,5 +150,5 @@ if __name__ == "__main__":
         #displaying the marked image
         img = mark_ArUco_image(img, ArUco_details_dict, ArUco_corners) 
         cv2.imshow("Marked Image",img)
-        cv2.waitKey(1)
+        cv2.waitKey(0)
         cv2.destroyAllWindows()
